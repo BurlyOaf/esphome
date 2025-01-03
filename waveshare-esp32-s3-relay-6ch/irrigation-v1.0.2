@@ -1,0 +1,436 @@
+substitutions:
+  name: waveshare-esp32s3-6ch-ec6740
+  friendly_name: Waveshare ESP32-S3-Relay-6CH
+  relay_zone_1: "Relay Zone 1"
+  relay_zone_2: "Relay Zone 2"
+  relay_zone_3: "Relay Zone 3"
+  relay_zone_4: "Relay Zone 4"
+  relay_zone_5: "Relay Zone 5"
+  relay_master_solenoid: "Relay Master Solenoid"
+ #sprinkler component substitutions 
+  valve_zone_1: "Sprinkler Zone 1"
+  valve_zone_2: "Sprinkler Zone 2"
+  valve_zone_3: "Sprinkler Zone 3"
+  valve_zone_4: "Sprinkler Zone 4"
+  valve_zone_5: "Sprinkler Zone 5"
+  valve_master_solenoid: "Sprinkler Master Solenoid"
+
+packages:
+  esphome.bluetooth-proxy: github://esphome/bluetooth-proxies/esp32-generic/esp32-generic.yaml@main
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+#    type: arduino
+    type: esp-idf
+    
+# Enable logging
+logger:
+
+# Enable Home Assistant API #   key: "TZO7R7dmJimrCH1WhgsvHnby52wmo2H6g4Sb3YFLeag="
+api:
+  encryption:
+    key: 7v/vqO+vivn3xjlzBczvE74rgXMBDhIi4wYDOqlf38o=
+  services:
+    - service: play_rtttl
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda "return song_str;"
+
+
+ota:
+  - platform: esphome
+    password: "8be8e6ede05aa3f2fc99370b10e42ab7"
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1100ms
+    active: true
+
+bluetooth_proxy:
+  active: true
+
+#ota:
+#  - platform: esphome
+#    password: "0c6f6cf00ed0c4985422b0db531a94af"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Waveshare Fallback Hotspot"
+    password: "0421875831"
+
+captive_portal:
+
+#packages:
+#  esphome.bluetooth-proxy: github://esphome/bluetooth-proxies/esp32-generic.yaml@main
+
+web_server:
+  port: 80
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+  - platform: sntp
+
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+
+  - platform: gpio
+    name: "Boot Button"
+    pin:
+      number: 0
+      inverted: true
+      ignore_strapping_warning: true
+      mode:
+        input: true
+    disabled_by_default: true
+    on_press:
+      then:
+        - button.press: restart_button
+  - platform: gpio
+    name: "Green"
+    id: button_Green # ADD A STOP ALL DOUBLE CLICK FUNCTION
+    pin:
+      number: 12
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+  - platform: gpio
+    name: "Button 1"
+    id: button_white1
+    pin:
+      number: 11
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on : relay6
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay6
+  - platform: gpio
+    name: "Button 2"
+    id: button_white2
+    pin:
+      number: 35
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay5
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay4
+  - platform: gpio
+    name: "Button 3"
+    id: button_white3
+    pin:
+      number: 37
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay4
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay4
+  - platform: gpio
+    name: "Button 4"
+    id: button_white4
+    pin:
+      number: 36
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay3
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay3
+
+    
+    
+
+text_sensor:
+  - platform: version
+    name: "Firmware Version"
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      entity_category: diagnostic
+
+switch:
+  - platform: gpio
+    pin: GPIO46
+    id: relay6
+    name: ${relay_zone_1}
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 25minutes
+      - switch.turn_off: relay6
+  - platform: gpio
+    pin: GPIO45
+    id: relay5
+    name: ${relay_zone_2}
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 25minutes
+      - switch.turn_off: relay5
+  - platform: gpio
+    pin: GPIO42
+    id: relay4
+    name: ${relay_zone_3}
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 25minutes
+      - switch.turn_off: relay4
+  - platform: gpio
+    pin: GPIO41
+    id: relay3
+    name: ${relay_zone_4}
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 25minutes
+      - switch.turn_off: relay3
+  - platform: gpio
+    pin:
+      number: GPIO2
+#      ignore_strapping_warning: true
+    id: relay2
+    name: ${relay_zone_5}
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+      - delay: 25minutes
+      - switch.turn_off: relay2
+  - platform: gpio
+    pin:
+      number: GPIO1
+#      ignore_strapping_warning: true
+    id: relay1
+    name: ${relay_master_solenoid}
+    restore_mode: ALWAYS_OFF
+
+uart:
+  tx_pin: GPIO17
+  rx_pin: GPIO18
+  baud_rate: 115200
+
+# buzzer
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: buzzer
+
+
+rtttl:
+  output: buzzer
+  id: rtttl_buzzer
+  gain: 30%
+#  - rtttl.play:
+#    rtttl: !lambda "return song_str;"
+
+#LED Arduino Framework
+#light:
+#  - platform: neopixelbus
+#    type: RGB
+#    variant: 800KBPS
+#    pin: GPIO38
+#    num_leds: 1
+#    name: "RGB LED"
+#    id: rgb_led
+
+#LED esp-idf Framework
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_led
+    name: "RGB LED"
+    pin: GPIO38
+    num_leds: 1
+    rmt_channel: 0
+    rgb_order: RGB
+    chipset: ws2812
+
+button:
+  - platform: restart
+    name: "Restart"
+    id: restart_button
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+  - platform: uptime
+    type: seconds
+    name: Uptime Sensor
+    update_interval: 60s
+
+  # Reports the WiFi signal strength in %
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Strength"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+sprinkler:
+  - id: sprinkler_ctrlr
+    main_switch: Sprinklers
+    auto_advance_switch: Sprinklers Auto Advance
+    valve_overlap: 5s
+    valves:
+      - valve_switch: ${valve_zone_1}
+        enable_switch: Enable ${valve_zone_1}
+        pump_switch_id: relay1
+        valve_switch_id: relay6
+        run_duration_number: 
+          id: zone_1_run_duration
+          name: "Zone 1 Run Duration"
+          icon: "mdi:timer-outline"
+          initial_value: 15
+          unit_of_measurement: s
+#        valve_switch_id: ${id_prefix}_valve_sw1
+      - valve_switch: ${valve_zone_2}
+        enable_switch: Enable ${valve_zone_2}
+        pump_switch_id: relay1
+        valve_switch_id: relay5
+        run_duration_number: 
+          id: zone_2_run_duration
+          name: "Zone 2 Run Duration"
+          icon: "mdi:timer-outline"
+          initial_value: 30
+          unit_of_measurement: s
+      - valve_switch: ${valve_zone_3}
+        enable_switch: Enable ${valve_zone_3}
+        pump_switch_id: relay1
+        valve_switch_id: relay4
+        run_duration_number: 
+          id: zone_3_run_duration
+          name: "Zone 3 Run Duration"
+          icon: "mdi:timer-outline"
+          initial_value: 700
+          unit_of_measurement: s
+      - valve_switch: ${valve_zone_4}
+        enable_switch: Enable ${valve_zone_4}
+        pump_switch_id: relay1
+        valve_switch_id: relay3
+        run_duration_number: 
+          id: zone_4_run_duration
+          name: "Zone 4 Run Duration"
+          icon: "mdi:timer-outline"
+          initial_value: 800
+          unit_of_measurement: s
+      - valve_switch: ${valve_zone_5}
+        enable_switch: Enable ${valve_zone_5}
+        pump_switch_id: relay1
+        valve_switch_id: relay2
+        run_duration_number: 
+          id: zone_5_run_duration
+          name: "Zone 5 Run Duration"
+          icon: "mdi:timer-outline"
+          initial_value: 900
+          unit_of_measurement: s
+#number:
+#  - platform: template
+#    name: "${valve_zone_1} Duration"
+#    id: zone_1_sprinkler_duration
+#    #initial_value: 900
+#    min_value: 1
+#    max_value: 3600
+#    step: 1
+#    set_action:
+#      - lambda: |-
+#          id(sprinkler_ctrlr).valve_run_duration(static_cast<int>(id(zone_1_sprinkler_duration).state));
+#
+#  - platform: template
+#    name: "${valve_zone_2} Duration"
+#    id: zone_2_sprinkler_duration
+#    #initial_value: 900
+#    min_value: 1
+#    max_value: 3600
+#    step: 1
+#    set_action:
+#      - lambda: |-
+#          id(sprinkler_ctrlr).valve_run_duration(static_cast<int>(id(zone_2_sprinkler_duration).state));
+#
+#  - platform: template
+#    name: "${valve_zone_3} Duration"
+#    id: zone_3_sprinkler_duration
+#    #initial_value: 900
+#    min_value: 1
+#    max_value: 3600
+#    step: 1
+#    set_action:
+#      - lambda: |-
+#          id(sprinkler_ctrlr).valve_run_duration(static_cast<int>(id(zone_3_sprinkler_duration).state));
+#
+#  - platform: template
+#    name: "${valve_zone_4} Duration"
+#    id: zone_4_sprinkler_duration
+#    #initial_value: 900
+#    min_value: 1
+#    max_value: 3600
+#    step: 1
+#    set_action:
+#      - lambda: |-
+#          id(sprinkler_ctrlr).valve_run_duration(static_cast<int>(id(zone_4_sprinkler_duration).state));
+#
+#  - platform: template
+#    name: "${valve_zone_5} Duration"
+#    id: zone_5_sprinkler_duration
+#    #initial_value: 900
+#    min_value: 1
+#    max_value: 3600
+#    step: 1
+#    set_action:
+#      - lambda: |-
+#          id(sprinkler_ctrlr).valve_run_duration(static_cast<int>(id(zone_5_sprinkler_duration).state));
+
