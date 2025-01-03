@@ -1,0 +1,631 @@
+substitutions:
+  name: waveshare-esp32s3-6ch-ec6740
+  friendly_name: Waveshare ESP32-S3-Relay-6CH
+packages:
+  esphome.bluetooth-proxy: github://esphome/bluetooth-proxies/esp32-generic/esp32-generic.yaml@main
+esphome:
+  name: ${name}
+  name_add_mac_suffix: false
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+#    type: arduino
+    type: esp-idf
+    
+# Enable logging
+logger:
+
+# Enable Home Assistant API #   key: "TZO7R7dmJimrCH1WhgsvHnby52wmo2H6g4Sb3YFLeag="
+api:
+  encryption:
+    key: 7v/vqO+vivn3xjlzBczvE74rgXMBDhIi4wYDOqlf38o=
+  services:
+    - service: play_rtttl
+      variables:
+        song_str: string
+      then:
+        - rtttl.play:
+            rtttl: !lambda "return song_str;"
+    - service: set_multiplier
+      variables:
+        multiplier: float
+      then:
+        - sprinkler.set_multiplier:
+            id: sprinkler_ctrlr
+            multiplier: !lambda 'return multiplier;'
+    - service: start_full_cycle
+      then:
+        - sprinkler.start_full_cycle: sprinkler_ctrlr
+    - service: start_single_valve
+      variables:
+        valve: int
+      then:
+        - sprinkler.start_single_valve:
+            id: sprinkler_ctrlr
+            valve_number: !lambda 'return valve;'
+    - service: next_valve
+      then:
+        - sprinkler.next_valve: sprinkler_ctrlr
+    - service: previous_valve
+      then:
+        - sprinkler.previous_valve: sprinkler_ctrlr
+    - service: shutdown
+      then:
+        - sprinkler.shutdown: sprinkler_ctrlr
+
+ota:
+  - platform: esphome
+    password: "8be8e6ede05aa3f2fc99370b10e42ab7"
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1100ms
+    active: true
+
+bluetooth_proxy:
+  active: true
+
+#ota:
+#  - platform: esphome
+#    password: "0c6f6cf00ed0c4985422b0db531a94af"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Waveshare Fallback Hotspot"
+    password: "0421875831"
+
+captive_portal:
+
+#packages:
+#  esphome.bluetooth-proxy: github://esphome/bluetooth-proxies/esp32-generic.yaml@main
+
+web_server:
+  port: 80
+
+time:
+  - platform: homeassistant
+    id: homeassistant_time
+  - platform: sntp
+
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+
+  - platform: gpio
+    name: "Boot Button"
+    pin:
+      number: 0
+      inverted: true
+      ignore_strapping_warning: true
+      mode:
+        input: true
+    disabled_by_default: true
+    on_press:
+      then:
+        - button.press: restart_button
+  - platform: gpio
+    name: "Green"
+    id: button_Green # ADD A STOP ALL DOUBLE CLICK FUNCTION
+    pin:
+      number: 12
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+  - platform: gpio
+    name: "Zone 1"
+    id: button_white1
+    pin:
+      number: 11
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on : relay6
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay6
+  - platform: gpio
+    name: "Zone 2"
+    id: button_white2
+    pin:
+      number: 35
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay5
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay4
+  - platform: gpio
+    name: "Zone 3"
+    id: button_white3
+    pin:
+      number: 37
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay4
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay4
+  - platform: gpio
+    name: "Zone 4"
+    id: button_white4
+    pin:
+      number: 36
+      inverted: true
+      mode:
+        input: true
+        pullup: true
+    on_press:
+      - switch.turn_on: relay3
+    on_double_click:
+      min_length: 50ms
+      max_length: 350ms
+      then:
+        - switch.turn_off: relay3
+
+    
+    
+
+text_sensor:
+  - platform: version
+    name: "Firmware Version"
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      entity_category: diagnostic
+
+switch:
+  - platform: gpio
+    pin: GPIO46
+    id: relay6
+    name: Zone 1 Front Lawn
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+#      - switch.turn_on: relay1  
+      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+      - switch.turn_off: relay6
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Zone off
+#      - switch.turn_off: relay1
+  - platform: gpio
+    pin: GPIO45
+    id: relay5
+    name: Zone 2 Side Lawn
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+#      - switch.turn_on: relay1
+      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+      - switch.turn_off: relay5
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+  - platform: gpio
+    pin: GPIO42
+    id: relay4
+    name: Zone 3 Back Lawn
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+#      - switch.turn_on: relay1
+      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+      - switch.turn_off: relay4
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+  - platform: gpio
+    pin: GPIO41
+    id: relay3
+    name: Zone 4 Hedge
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+#      - switch.turn_on: relay1
+      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+      - switch.turn_off: relay3
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+  - platform: gpio
+    pin:
+      number: GPIO2
+#      ignore_strapping_warning: true
+    id: relay2
+    name: Zone 5 Veggies
+    restore_mode: ALWAYS_OFF
+    on_turn_on:
+#      - switch.turn_on: relay1
+      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+      - switch.turn_off: relay2
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+  - platform: gpio
+    pin:
+      number: GPIO1
+#      ignore_strapping_warning: true
+    id: relay1
+    name: Master Solenoid
+    restore_mode: ALWAYS_OFF
+
+#####################################################################
+#Nath Switch Config - Removed for testing sprinkler component, taking out switch.turn_off: relay1
+#####################################################################
+
+#switch:
+#  - platform: gpio
+#    pin: GPIO46
+#    id: relay6
+#    name: Zone 1 Front Lawn
+#    restore_mode: ALWAYS_OFF
+#    on_turn_on:
+#      - switch.turn_on: relay1  
+#      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+#      - switch.turn_off: relay6
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Zone off
+#      - switch.turn_off: relay1
+#  - platform: gpio
+#    pin: GPIO45
+#    id: relay5
+#    name: Zone 2 Side Lawn
+#    restore_mode: ALWAYS_OFF
+#    on_turn_on:
+#      - switch.turn_on: relay1
+#      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+#      - switch.turn_off: relay5
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+#  - platform: gpio
+#    pin: GPIO42
+#    id: relay4
+#    name: Zone 3 Back Lawn
+#    restore_mode: ALWAYS_OFF
+#    on_turn_on:
+#      - switch.turn_on: relay1
+#      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+#      - switch.turn_off: relay4
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+#  - platform: gpio
+#    pin: GPIO41
+#    id: relay3
+#    name: Zone 4 Hedge
+#    restore_mode: ALWAYS_OFF
+#    on_turn_on:
+#      - switch.turn_on: relay1
+#      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+#      - switch.turn_off: relay3
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+#  - platform: gpio
+#    pin:
+#      number: GPIO2
+##      ignore_strapping_warning: true
+#    id: relay2
+#    name: Zone 5 Veggies
+#    restore_mode: ALWAYS_OFF
+#    on_turn_on:
+#      - switch.turn_on: relay1
+#      - delay: 25minutes
+#      - switch.turn_off: relay1  # Turn off Master solenoid first to drop pressure
+#      - delay: 2s
+#      - switch.turn_off: relay2
+#    on_turn_off: 
+#      - delay: 1s # Delay then turn Master off
+#      - switch.turn_off: relay1
+#  - platform: gpio
+#    pin:
+#      number: GPIO1
+##      ignore_strapping_warning: true
+#    id: relay1
+#    name: Master Solenoid
+#    restore_mode: ALWAYS_OFF
+
+
+uart:
+  tx_pin: GPIO17
+  rx_pin: GPIO18
+  baud_rate: 115200
+
+# buzzer
+output:
+  - platform: ledc
+    pin: GPIO21
+    id: buzzer
+
+
+rtttl:
+  output: buzzer
+  id: rtttl_buzzer
+  gain: 30%
+#  - rtttl.play:
+#    rtttl: !lambda "return song_str;"
+
+#LED Arduino Framework
+#light:
+#  - platform: neopixelbus
+#    type: RGB
+#    variant: 800KBPS
+#    pin: GPIO38
+#    num_leds: 1
+#    name: "RGB LED"
+#    id: rgb_led
+
+#LED esp-idf Framework
+light:
+  - platform: esp32_rmt_led_strip
+    id: rgb_led
+    name: "RGB LED"
+    pin: GPIO38
+    num_leds: 1
+    rmt_channel: 0
+    rgb_order: RGB
+    chipset: ws2812
+
+button:
+  - platform: restart
+    name: "Restart"
+    id: restart_button
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+  - platform: uptime
+    type: seconds
+    name: Uptime Sensor
+    update_interval: 60s
+
+  # Reports the WiFi signal strength in %
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Strength"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: diagnostic
+
+# Add template sensors for each zone to track remaining time
+#sensor:
+  # Zone 1 - Front Yard (1)
+  - platform: template
+    name: "Zone 1 Remaining Time"
+    unit_of_measurement: "minutes"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(relay6).state) {
+        unsigned long elapsed_time = millis() / 1000;  // Time since ESP started (in seconds)
+        unsigned long total_time = 25 * 60;  // 25 minutes in seconds
+        unsigned long remaining_time = total_time - (elapsed_time % total_time);
+        return remaining_time / 60.0;  // Convert to minutes
+      }
+      return 0.0;
+
+  # Zone 2 - Front Garden (2)
+  - platform: template
+    name: "Zone 2 Remaining Time"
+    unit_of_measurement: "minutes"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(relay5).state) {
+        unsigned long elapsed_time = millis() / 1000;
+        unsigned long total_time = 25 * 60;  // 25 minutes
+        unsigned long remaining_time = total_time - (elapsed_time % total_time);
+        return remaining_time / 60.0;
+      }
+      return 0.0;
+
+  # Zone 3 - Side Yard (3)
+  - platform: template
+    name: "Zone 3 Remaining Time"
+    unit_of_measurement: "minutes"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(relay4).state) {
+        unsigned long elapsed_time = millis() / 1000;
+        unsigned long total_time = 25 * 60;  // 25 minutes
+        unsigned long remaining_time = total_time - (elapsed_time % total_time);
+        return remaining_time / 60.0;
+      }
+      return 0.0;
+
+  # Zone 4 - Back Yard Close (4)
+  - platform: template
+    name: "Zone 4 Remaining Time"
+    unit_of_measurement: "minutes"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(relay3).state) {
+        unsigned long elapsed_time = millis() / 1000;
+        unsigned long total_time = 25 * 60;  // 25 minutes
+        unsigned long remaining_time = total_time - (elapsed_time % total_time);
+        return remaining_time / 60.0;
+      }
+      return 0.0;
+
+  # Zone 5 - Back Yard Far (5)
+  - platform: template
+    name: "Zone 5 Remaining Time"
+    unit_of_measurement: "minutes"
+    state_class: measurement
+    accuracy_decimals: 0
+    lambda: |-
+      if (id(relay2).state) {
+        unsigned long elapsed_time = millis() / 1000;
+        unsigned long total_time = 25 * 60;  // 25 minutes
+        unsigned long remaining_time = total_time - (elapsed_time % total_time);
+        return remaining_time / 60.0;
+      }
+      return 0.0;
+
+  #Sprinkler component time remaining test    
+  - platform: template
+    name: "Front Yard Remaining Time"
+    id: front_yard_remaining_time
+    unit_of_measurement: "seconds"
+    accuracy_decimals: 0
+    lambda: |-
+      float remaining_time = id(front_yard_sprinkler_duration).state - (millis() - id(sprinkler_ctrlr).state) / 1000.0;
+      if (remaining_time < 0) {
+        remaining_time = 0;  // Prevent negative time
+      }
+      return remaining_time;
+#sprinkler:
+#  - id: lawn_sprinkler_ctrlr
+#    main_switch: "Lawn Sprinklers"
+#    auto_advance_switch: "Lawn Sprinklers Auto Advance"
+#    reverse_switch: "Lawn Sprinklers Reverse"
+#    valve_open_delay: 5s
+#    valves:
+#      - valve_switch: "Front Lawn"
+#        enable_switch: "Enable Z1 Front Lawn"
+#        pump_switch_id: relay1
+#        run_duration: 900s
+#        valve_switch_id: relay6
+#      - valve_switch: "Side Lawn"
+#        enable_switch: "Enable Z2 Side Lawn"
+#        pump_switch_id: relay1
+#        run_duration: 900s
+#        valve_switch_id: relay5
+#      - valve_switch: "Back Lawn"
+#        enable_switch: "Enable Z3 Back Lawn"
+#        pump_switch_id: relay1
+#        run_duration: 900s
+#        valve_switch_id: relay4
+#      - valve_switch: "Hedge"
+#        enable_switch: "Enable Z4 Hedge "
+#        pump_switch_id: relay1
+#        run_duration: 900s
+#        valve_switch_id: relay3
+#      - valve_switch: "Veggies"
+#        enable_switch: "Enable Z5 Veggies"
+#        pump_switch_id: relay1
+#        run_duration: 900s
+#        valve_switch_id: relay2
+#    multiplier_number:
+#      id: controller_multiplier_number
+#      name: "Lawn Sprinkler Multiplier"
+#      initial_value: 1.5
+#      min_value: 0.1
+#      max_value: 5
+#      set_action:
+#        - lambda: |-
+#            auto multiplier = id(controller_multiplier_number).state;
+#            id(lawn_sprinkler_ctrlr).set_multiplier(multiplier);
+
+
+sprinkler:
+  - id: sprinkler_ctrlr
+    main_switch: "Sprinklers"
+    auto_advance_switch: "Sprinklers Auto Advance"
+    valve_overlap: 5s
+    valves:
+      - valve_switch: "Front Yard (1)"
+        enable_switch: "Enable Front Yard (1)"
+        pump_switch_id: relay1
+        run_duration_number: "Front Yard Sprinkler Duration"
+        valve_switch_id: relay6
+
+      - valve_switch: "Front Garden (2)"
+        enable_switch: "Enable Front Garden (2)"
+        pump_switch_id: relay1
+        run_duration_number: "Front Garden Sprinkler Duration"
+        valve_switch_id: relay5
+ 
+      - valve_switch: "Side Yard (3)"
+        enable_switch: "Enable Side Yard (3)"
+        pump_switch_id: relay1
+        run_duration_number: "Side Yard Sprinkler Duration"
+        valve_switch_id: relay4
+ 
+      - valve_switch: "Back Yard Close (4)"
+        enable_switch: "Enable Back Yard Close (4)"
+        pump_switch_id: relay1
+        run_duration_number: "Back Yard Close Sprinkler Duration"
+        valve_switch_id: relay3
+
+
+      - valve_switch: "Back Yard Far (5)"
+        enable_switch: "Enable Back Yard Far (5)"
+        pump_switch_id: relay1
+        run_duration_number: "Back Yard Far Sprinkler Duration"
+        valve_switch_id: relay2
+
+number:
+  - platform: template
+    name: "Front Yard Sprinkler Duration"
+    id: front_yard_sprinkler_duration
+    initial_value: 900
+    min_value: 1
+    max_value: 3600
+    step: 1
+    set_action:
+      - lambda: |-
+          id(sprinkler_ctrlr).set_run_duration_number(id(front_yard_sprinkler_duration).state);
