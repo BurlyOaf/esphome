@@ -1,3 +1,5 @@
+#TEST EDIT / COMMIT CHANGES
+
 substitutions:
   # Set the MAC addresses and encryption keys of your Victron devices here
   # The values here are examples and cannot work for your devices
