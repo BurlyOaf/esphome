@@ -1,0 +1,197 @@
+substitutions:
+  smart_shunt_1_mac_address: fc78d9a837ce
+  smart_shunt_1_encryption_key: 74f2facd85124d32458e2cb3a50d4939
+  smart_solar_1_mac_address: c4d3a6ad675b
+  smart_solar_1_encryption_key: 0e9fa0a28447d098d7874eb66943736
+  smart_shunt_2_mac_address: f642d3f8d807
+  smart_shunt_2_encryption_key: 4f8ac5d85932ec74c3bf2b0e66f3547f
+  smart_solar_2_mac_address: d423f3b1a50f
+  smart_solar_2_encryption_key: 5bb8e06dc867fb809301ec2ba0830ffc
+  smart_ac_charger_2_mac: f7f84603a571
+  smart_ac_charger_2_encryption_key: 1ca25b986910ab65e3683e45eb8edeeb
+  sd_chip_select_pin: 5
+
+esphome:
+  name: victron_display
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: "YOUR_SSID"
+  password: "YOUR_PASSWORD"
+
+logger:
+  level: DEBUG
+
+api:
+  services:
+    - service: set_page
+      variables:
+        page: int
+      then:
+        - globals.set:
+            id: page
+            value: !lambda 'return page;'
+
+time:
+  - platform: homeassistant
+    id: time
+
+spi:
+  clk_pin: 18
+  mosi_pin: 23
+  miso_pin: 19
+
+sd_card:
+  cs_pin: ${sd_chip_select_pin}
+  id: sd1
+
+text_sensor:
+  - platform: template
+    name: "SD Log Line"
+    id: sd_log_line
+
+interval:
+  - interval: 60s
+    then:
+      - lambda: |-
+          char line[256];
+          sprintf(line, "%s,%.2f,%.2f,%.1f,%.1f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
+                  id(time).now().strftime("%Y-%m-%dT%H:%M:%S").c_str(),
+                  id(shunt1_voltage).state,
+                  id(shunt1_current).state,
+                  id(shunt1_soc).state,
+                  id(shunt1_ttg).state,
+                  id(shunt1_consumed_ah).state,
+                  id(solar1_current).state,
+                  id(solar1_power).state,
+                  id(shunt2_voltage).state,
+                  id(shunt2_current).state,
+                  id(solar2_current).state,
+                  id(solar2_power).state);
+          id(sd_log_line).publish_state(line);
+          id(sd1).write_line(line);
+
+font:
+  - file: "fonts/Arial-Bold.ttf"
+    id: font
+    size: 16
+
+globals:
+  - id: page
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+# Victron BLE sensors
+sensor:
+  - platform: victron_ble
+    mac_address: ${smart_shunt_1_mac_address}
+    encryption_key: ${smart_shunt_1_encryption_key}
+    name: "Shunt1 Voltage"
+    id: shunt1_voltage
+    unit_of_measurement: "V"
+  - platform: victron_ble
+    mac_address: ${smart_shunt_1_mac_address}
+    encryption_key: ${smart_shunt_1_encryption_key}
+    name: "Shunt1 Current"
+    id: shunt1_current
+    unit_of_measurement: "A"
+  - platform: victron_ble
+    mac_address: ${smart_shunt_1_mac_address}
+    encryption_key: ${smart_shunt_1_encryption_key}
+    name: "Shunt1 SOC"
+    id: shunt1_soc
+    unit_of_measurement: "%"
+  - platform: victron_ble
+    mac_address: ${smart_shunt_1_mac_address}
+    encryption_key: ${smart_shunt_1_encryption_key}
+    name: "Shunt1 Time To Go"
+    id: shunt1_ttg
+    unit_of_measurement: "h"
+  - platform: victron_ble
+    mac_address: ${smart_shunt_1_mac_address}
+    encryption_key: ${smart_shunt_1_encryption_key}
+    name: "Shunt1 Consumed Ah"
+    id: shunt1_consumed_ah
+    unit_of_measurement: "Ah"
+
+  - platform: victron_ble
+    mac_address: ${smart_solar_1_mac_address}
+    encryption_key: ${smart_solar_1_encryption_key}
+    name: "Solar1 Current"
+    id: solar1_current
+    unit_of_measurement: "A"
+  - platform: victron_ble
+    mac_address: ${smart_solar_1_mac_address}
+    encryption_key: ${smart_solar_1_encryption_key}
+    name: "Solar1 Power"
+    id: solar1_power
+    unit_of_measurement: "W"
+
+  - platform: victron_ble
+    mac_address: ${smart_shunt_2_mac_address}
+    encryption_key: ${smart_shunt_2_encryption_key}
+    name: "Shunt2 Voltage"
+    id: shunt2_voltage
+    unit_of_measurement: "V"
+  - platform: victron_ble
+    mac_address: ${smart_shunt_2_mac_address}
+    encryption_key: ${smart_shunt_2_encryption_key}
+    name: "Shunt2 Current"
+    id: shunt2_current
+    unit_of_measurement: "A"
+
+  - platform: victron_ble
+    mac_address: ${smart_solar_2_mac_address}
+    encryption_key: ${smart_solar_2_encryption_key}
+    name: "Solar2 Current"
+    id: solar2_current
+    unit_of_measurement: "A"
+  - platform: victron_ble
+    mac_address: ${smart_solar_2_mac_address}
+    encryption_key: ${smart_solar_2_encryption_key}
+    name: "Solar2 Power"
+    id: solar2_power
+    unit_of_measurement: "W"
+
+display:
+  - platform: st7789v
+    model: "2.8in"
+    reset_pin: 4
+    cs_pin: 5
+    dc_pin: 16
+    rotation: 90
+    lambda: |-
+      if (id(page) == 0) {
+        it.print(0, 0, id(font), "Shunt1 V: " + to_string(id(shunt1_voltage).state));
+        it.print(0, 16, id(font), "I: " + to_string(id(shunt1_current).state));
+        it.print(0, 32, id(font), "SOC: " + to_string(id(shunt1_soc).state));
+        it.print(0, 48, id(font), "TTG: " + to_string(id(shunt1_ttg).state));
+        it.print(0, 64, id(font), "Ah: " + to_string(id(shunt1_consumed_ah).state));
+        it.print(0, 80, id(font), "Solar I: " + to_string(id(solar1_current).state));
+        it.print(0, 96, id(font), "Solar P: " + to_string(id(solar1_power).state));
+      } else if (id(page) == 1) {
+        it.print(0, 0, id(font), "Shunt2 V: " + to_string(id(shunt2_voltage).state));
+        it.print(0, 16, id(font), "I: " + to_string(id(shunt2_current).state));
+        it.print(0, 32, id(font), "Solar2 I: " + to_string(id(solar2_current).state));
+        it.print(0, 48, id(font), "P: " + to_string(id(solar2_power).state));
+      } else if (id(page) == 2) {
+        it.print(0, 0, id(font), "Custom Page 3");
+      } else if (id(page) == 3) {
+        it.print(0, 0, id(font), "Custom Page 4");
+      } else if (id(page) == 4) {
+        it.print(0, 0, id(font), "Custom Page 5");
+      } else if (id(page) == 5) {
+        it.print(0, 0, id(font), "Custom Page 6");
+      }
+
+touchscreen:
+  - platform: xpt2046
+    cs_pin: 17
+    id: ts
+    update_interval: 100ms
+    on_touch:
+      then:
+        - lambda: |-
+            id(page) = (id(page) + 1) % 6;
